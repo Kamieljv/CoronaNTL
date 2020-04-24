@@ -1,6 +1,11 @@
 # Project: Corona NTL
-# Version: 18-04-2020
+# Version: 24-04-2020
 # Author: Kamiel Verhelst
+# 
+#
+# This is the main project file, which: 
+# * Loads the MODIS data
+# * ... ? ADD
 
 # Loading libraries
 # pkgTest is a helper function to load packages and install packages only when they are not installed yet.
@@ -45,6 +50,27 @@ VI <- mt_subset(product = "MOD13Q1",
 # convert df to raster
 VI_r <- mt_to_raster(df = VI)
 
+
 # write raster to disk
-datdir = 'data/'
-writeRaster(VI_r, paste0(datdir, "NDVI_Moria_1km_2015-2020.grd"), format="raster")
+datdir <- 'data/'
+writeRaster(VI_r, 
+            path=datdir,
+            filename=names(VI_r),  
+            format="GTiff", 
+            overwrite=TRUE)
+base_name <- "NDVI_Moria_1km_2015-2020"
+writeRaster(VI_r, paste0(datdir, base_name,".tif"), overwrite=T) #write raster
+write.csv(names(VI_r), file=paste0(datdir, base_name, ".csv"), row.names=F) #write layer names
+
+# load raster from file
+stacks <- list.files(path=datdir, 
+                    pattern="\\.tif$", 
+                    full.names=TRUE)
+names <- list.files(path=datdir, 
+                     pattern="\\.csv$", 
+                     full.names=TRUE)
+r <- stack(files[1])
+names(r) <- as.character(read.csv(names[1])$x)
+
+
+
