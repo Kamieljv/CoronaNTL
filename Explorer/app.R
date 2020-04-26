@@ -7,8 +7,6 @@
 #    http://shiny.rstudio.com/
 #
 
-date_vec <- as.Date(substr(names(VI_m), 2, nchar(names(VI_m)[1])), format="%Y.%m.%d")
-
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
@@ -19,7 +17,7 @@ ui <- fluidPage(
     sidebarLayout(
         sidebarPanel(
             sliderTextInput("dateSlider", "Scroll through time...",
-                            choices = date_vec)
+                            choices = dates)
         ),
 
         # Show a plot of the generated distribution
