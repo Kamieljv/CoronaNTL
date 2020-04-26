@@ -93,8 +93,8 @@ VI_r <- stack(stacks[1])
 names(VI_r) <- as.character(read.csv(names[1])$x)
 
 # Load QA data
-QA_r <- stack(stacks[1])
-names(QA_r) <- as.character(read.csv(names[1])$x)
+QA_r <- stack(stacks[2])
+names(QA_r) <- as.character(read.csv(names[2])$x)
 
 ## clean the data
 # create mask on pixel reliability flag set all values <0 or >1 NA
@@ -104,16 +104,24 @@ m[(QA_r < 0 | QA_r > 1)] <- NA # continue working with QA 0 (good data), and 1 (
 # mask all values from VI raster NA
 VI_m <- mask(VI_r, m, maskvalue=NA, updatevalue=NA)
 
+# Define the capture dates as date objects
+dates <- as.Date(names(VI_m), "X%Y.%m.%d")
 
+# Optional: run shiny app
+shiny::runApp('Explorer')
 
 # plot the first image
 plot(m,1) # plot mask
 plot(VI_m,1) # plot cleaned NDVI raster
 
+# click(VI_m, id=TRUE, xy=TRUE, cell=TRUE, n= 1)
+
 # Create time series in single pixel
-px <- 78 # pixel number so adjust this number to select the center pixel
+px <- 145 # pixel number so adjust this number to select the center pixel
 tspx <- timeser(as.vector(VI_m[px]),as.Date(names(VI_m), "X%Y.%m.%d")) # convert pixel 1 to a time series
 plot(tspx, main = sprintf('NDVI in pixel %d', px)) # NDVI time series cleaned using the "reliability information"
+bfm1 <- bfastmonitor(tspx, response ~ trend + harmon, order = 2, start = c(2016,13), verbose=T) # Note: the first observation in 2019 marks the transition from 'history' to 'monitoring'
+plot(bfm1)
 
 # Create a dataframe with all times series combined
 ts.df <- ts_df(timeser(as.vector(VI_m[1]), as.Date(names(VI_m), "X%Y.%m.%d")))
@@ -123,24 +131,24 @@ for (px in 2:ncell(VI_m)) {
 names(ts.df)[2:ncol(ts.df)] <- paste0('px', 1:ncell(VI_m))
 
 # Define a function to plot all pixel time series in a single plot
-plotAllLayers<-function(df){
-  
-  p<-ggplot(data=df,aes(df[,1]))
-  
-  for(i in names(df)[-1]){ 
-    p<-p+geom_line(aes_string(y=i))
-  }
-  
-  return(p)
-}
-
-plotAllLayers(ts.df)
+# plotAllLayers<-function(df){
+#   
+#   p<-ggplot(data=df,aes(df[,1]))
+#   
+#   for(i in names(df)[-1]){ 
+#     p<-p+geom_line(aes_string(y=i))
+#   }
+#   
+#   return(p)
+# }
+# 
+# plotAllLayers(ts.df)
 
 
 bfmRaster = function(pixels)
 {
   tspx <- timeser(pixels, dates) # create a timeseries of all pixels
-  bfm <- bfastmonitor(tspx, response ~ trend + harmon, order = 3, start = c(2016,2)) # run bfast on all pixels
+  bfm <- bfastmonitor(tspx, response ~ trend + harmon, order = 3, start = c(2012,1)) # run bfast on all pixels
   return(c(bfm$breakpoint, bfm$magnitude)) 
 }
 
@@ -150,6 +158,5 @@ names(bfmR) <- c('time of break', 'magnitude of change')
 plot(bfmR) # resulting time and magnitude of change
 
 
-bfm1 <- bfastmonitor(tspx, response ~ trend + harmon, order = 2, start = c(2016,13), verbose=T) # Note: the first observation in 2019 marks the transition from 'history' to 'monitoring'
-plot(bfm1)
+
 
