@@ -11,7 +11,7 @@
 ui <- fluidPage(
 
     # Application title
-    titlePanel("NDVI at Moria Camp, Lesbos, Greece"),
+    titlePanel("NDVI at Kutupalong Camp, Bangladesh"),
 
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
@@ -40,7 +40,7 @@ server <- function(input, output) {
             setView(lng=camp_lon, lat=camp_lat, zoom=13) %>%
             addLegend(pal = colbin,
                       values = values(layer),
-                      title = "legendTitle",
+                      title = "NDVI",
                       position = "bottomright") # Add a legend
     })
     
