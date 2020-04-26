@@ -34,8 +34,12 @@ timeser <- function(index, dt) {
 }
 
 # Define coordinages of Moria Camp, Lesbos, Greece (39.13493, 26.50351)
-camp_lat <- 39.13493
-camp_lon <- 26.50351
+# camp_lat <- 39.13493
+# camp_lon <- 26.50351
+
+# Define coordinages of Kutupalong Camp, Bangladesh (21.1975, 92.1523)
+camp_lat <- 21.1975
+camp_lon <- 92.1523
 
 # Vegetation index at the Moria Camp, Lesbos, Greece (39.13493, 26.50351)
 VI <- mt_subset(product = "MOD13Q1",
@@ -44,8 +48,8 @@ VI <- mt_subset(product = "MOD13Q1",
                 band = '250m_16_days_NDVI',
                 start = "2010-01-01",
                 end = "2020-01-01",
-                km_lr = 2,
-                km_ab = 2,
+                km_lr = 4,
+                km_ab = 4,
                 progress = TRUE)
 QA <- mt_subset(product = "MOD13Q1",
                 lat = camp_lat,
@@ -53,8 +57,8 @@ QA <- mt_subset(product = "MOD13Q1",
                 band = "250m_16_days_pixel_reliability",
                 start = "2010-01-01",
                 end = "2020-01-01",
-                km_lr = 2,
-                km_ab = 2,
+                km_lr = 4,
+                km_ab = 4,
                 progress = TRUE)
 
 
@@ -67,12 +71,12 @@ QA_r <- mt_to_raster(df = QA)
 datdir <- 'data/'
 
 ## Vegetation indices
-base_name <- "NDVI_Moria_2km_2010-2020"
+base_name <- "NDVI_Kutupalong_4km_2010-2020"
 writeRaster(VI_r, paste0(datdir, base_name,".tif"), overwrite=T) #write raster
 write.csv(names(VI_r), file=paste0(datdir, base_name, ".csv"), row.names=F) #write layer names
 
 ## Quality Assessment
-base_name <- "NDVI_Moria_2km_2010-2020_QA"
+base_name <- "NDVI_Kutupalong_4km_2010-2020_QA"
 writeRaster(QA_r, paste0(datdir, base_name,".tif"), overwrite=T) #write raster
 write.csv(names(QA_r), file=paste0(datdir, base_name, ".csv"), row.names=F) #write layer names
 
@@ -106,24 +110,6 @@ VI_m <- mask(VI_r, m, maskvalue=NA, updatevalue=NA)
 plot(m,1) # plot mask
 plot(VI_m,1) # plot cleaned NDVI raster
 
-# Reproject to WGS 84
-
-
-# Inspect the area using Leaflet
-layer <- VI_m$X2010.01.01
-colbin <- colorBin(palette = "RdYlGn", domain = c(0, 1), na.color = NA, pretty=T, bins=9)
-
-leaflet(data = layer) %>%
-  addProviderTiles(providers$OpenStreetMap) %>% # Add basemap
-  addScaleBar(position = "topright") %>% # Add scalebar
-  setView(lng=camp_lon, lat=camp_lat, zoom=13) %>%
-  addRasterImage(layer, opacity=0.7, colors = colbin) %>% # Add the raster layer
-  addLegend(pal = colbin,
-            values = values(layer),
-            title = "legendTitle",
-            position = "bottomright") # Add a legend
-
-
 # Create time series in single pixel
 px <- 78 # pixel number so adjust this number to select the center pixel
 tspx <- timeser(as.vector(VI_m[px]),as.Date(names(VI_m), "X%Y.%m.%d")) # convert pixel 1 to a time series
@@ -136,9 +122,34 @@ for (px in 2:ncell(VI_m)) {
 }
 names(ts.df)[2:ncol(ts.df)] <- paste0('px', 1:ncell(VI_m))
 
+# Define a function to plot all pixel time series in a single plot
+plotAllLayers<-function(df){
+  
+  p<-ggplot(data=df,aes(df[,1]))
+  
+  for(i in names(df)[-1]){ 
+    p<-p+geom_line(aes_string(y=i))
+  }
+  
+  return(p)
+}
+
+plotAllLayers(ts.df)
 
 
+bfmRaster = function(pixels)
+{
+  tspx <- timeser(pixels, dates) # create a timeseries of all pixels
+  bfm <- bfastmonitor(tspx, response ~ trend + harmon, order = 3, start = c(2016,2)) # run bfast on all pixels
+  return(c(bfm$breakpoint, bfm$magnitude)) 
+}
 
-bfm1 <- bfastmonitor(tspx, response ~ trend + harmon, order = 4, start = c(2016,1)) # Note: the first observation in 2019 marks the transition from 'history' to 'monitoring'
+# calc function 
+bfmR <- calc(VI_m, bfmRaster)
+names(bfmR) <- c('time of break', 'magnitude of change')
+plot(bfmR) # resulting time and magnitude of change
+
+
+bfm1 <- bfastmonitor(tspx, response ~ trend + harmon, order = 2, start = c(2016,13), verbose=T) # Note: the first observation in 2019 marks the transition from 'history' to 'monitoring'
 plot(bfm1)
 
