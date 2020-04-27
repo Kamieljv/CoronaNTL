@@ -158,5 +158,10 @@ names(bfmR) <- c('time of break', 'magnitude of change')
 plot(bfmR) # resulting time and magnitude of change
 
 
+# write out result
+outdir <- 'output/'
+base_name <- "bfm_Kutupalong_4km_2010-2020"
+writeRaster(bfmR, paste0(outdir, base_name,".tif"), overwrite=T) #write raster
+write.csv(names(bfmR), file=paste0(outdir, base_name, ".csv"), row.names=F) #write layer names
 
 
