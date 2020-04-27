@@ -148,7 +148,7 @@ names(ts.df)[2:ncol(ts.df)] <- paste0('px', 1:ncell(VI_m))
 bfmRaster = function(pixels)
 {
   tspx <- timeser(pixels, dates) # create a timeseries of all pixels
-  bfm <- bfastmonitor(tspx, response ~ trend + harmon, order = 3, start = c(2013,1)) # run bfast on all pixels
+  bfm <- bfastmonitor(tspx, response ~ trend + harmon, order = 3, start = c(2016.5)) # run bfast on all pixels
   return(c(bfm$breakpoint, bfm$magnitude)) 
 }
 
@@ -160,8 +160,20 @@ plot(bfmR) # resulting time and magnitude of change
 
 # write out result
 outdir <- 'output/'
-base_name <- "bfm_Kutupalong_4km_2010-2020"
+base_name <- "bfm_Kutupalong_4km_2010-2020_st20165"
 writeRaster(bfmR, paste0(outdir, base_name,".tif"), overwrite=T) #write raster
 write.csv(names(bfmR), file=paste0(outdir, base_name, ".csv"), row.names=F) #write layer names
 
+# Plot result on map
+layer = bfmR$time.of.break
+colbin <- colorBin(palette = "RdYlGn", domain = c(min(values(layer), na.rm=T), max(values(layer), na.rm=T)), na.color = NA, pretty=T, bins=9)
+leaflet(data = layer) %>%
+  addProviderTiles(providers$OpenStreetMap) %>% # Add basemap
+  addScaleBar(position = "topright") %>% # Add scalebar
+  addRasterImage(layer, opacity=0.7, colors = colbin) %>% # Add the raster layer
+  setView(lng=camp_lon, lat=camp_lat, zoom=13) %>%
+  addLegend(pal = colbin,
+            values = values(layer),
+            title = "BFastMonitor Time of Break",
+            position = "bottomright") # Add a legend
 
