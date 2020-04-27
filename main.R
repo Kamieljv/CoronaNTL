@@ -89,12 +89,12 @@ names <- list.files(path=datdir,
                      full.names=TRUE)
 
 # Load VI data
-VI_r <- stack(stacks[1])
-names(VI_r) <- as.character(read.csv(names[1])$x)
+VI_r <- stack(stacks[3])
+names(VI_r) <- as.character(read.csv(names[3])$x)
 
 # Load QA data
-QA_r <- stack(stacks[2])
-names(QA_r) <- as.character(read.csv(names[2])$x)
+QA_r <- stack(stacks[4])
+names(QA_r) <- as.character(read.csv(names[4])$x)
 
 ## clean the data
 # create mask on pixel reliability flag set all values <0 or >1 NA
@@ -114,10 +114,10 @@ shiny::runApp('Explorer')
 plot(m,1) # plot mask
 plot(VI_m,1) # plot cleaned NDVI raster
 
-# click(VI_m, id=TRUE, xy=TRUE, cell=TRUE, n= 1)
+click(VI_m, id=TRUE, xy=TRUE, cell=TRUE, n= 1)
 
 # Create time series in single pixel
-px <- 145 # pixel number so adjust this number to select the center pixel
+px <- 512 # pixel number so adjust this number to select the center pixel
 tspx <- timeser(as.vector(VI_m[px]),as.Date(names(VI_m), "X%Y.%m.%d")) # convert pixel 1 to a time series
 plot(tspx, main = sprintf('NDVI in pixel %d', px)) # NDVI time series cleaned using the "reliability information"
 bfm1 <- bfastmonitor(tspx, response ~ trend + harmon, order = 2, start = c(2016,13), verbose=T) # Note: the first observation in 2019 marks the transition from 'history' to 'monitoring'
@@ -148,7 +148,7 @@ names(ts.df)[2:ncol(ts.df)] <- paste0('px', 1:ncell(VI_m))
 bfmRaster = function(pixels)
 {
   tspx <- timeser(pixels, dates) # create a timeseries of all pixels
-  bfm <- bfastmonitor(tspx, response ~ trend + harmon, order = 3, start = c(2012,1)) # run bfast on all pixels
+  bfm <- bfastmonitor(tspx, response ~ trend + harmon, order = 3, start = c(2013,1)) # run bfast on all pixels
   return(c(bfm$breakpoint, bfm$magnitude)) 
 }
 
