@@ -46,8 +46,8 @@ VI_r <- stack(stacks[3])
 names(VI_r) <- as.character(read.csv(names[3])$x)
 
 # Select and Load QA data from data directory
-QA_r <- stack(stacks[4])
-names(QA_r) <- as.character(read.csv(names[4])$x)
+QA_r <- stack(stacks[5])
+names(QA_r) <- as.character(read.csv(names[5])$x)
 
 # create mask on pixel reliability flag set all values <0 or >1 NA
 m <- QA_r
@@ -55,6 +55,9 @@ m[(QA_r < 0 | QA_r > 1)] <- NA # continue working with QA 0 (good data), and 1 (
 
 # mask all values from VI raster NA
 VI_m <- mask(VI_r, m, maskvalue=NA, updatevalue=NA)
+
+# Optional: plot masking example
+plotMaskingExample(VI_r, QA_r, VI_m)
 
 # Define the capture dates as date objects
 dates <- as.Date(names(VI_m), "X%Y.%m.%d")
@@ -100,52 +103,20 @@ ts.df <- prepareEstimationDF(VI_m, bfmR_neg, pb = TRUE)
 # plotPixelSeries(ts.df[,1:5])
 
 # Compute the population estimation 
-# get the largest negative change in VI
-dVI_min <- min(getValues(bfmR_neg$magnitude.of.change))
-stableMean <- calc(VI_m, calcStableMean)
+comb_ts <- computePopulationEstimate(bfmR_neg, VI_m)
+# Plot the two population graphs
+ggplot(comb_ts, aes(x=time)) +
+  geom_line(aes(y = popEst, color = "pop. Est.")) + 
+  geom_line(aes(y = popRep, color = "pop. Rep.")) +
+  scale_color_manual("", values = c("pop. Est."="red", "pop. Rep."="blue")) +
+  labs(title="Estimated and Reported Population of Kutupalong Camp", y="Population", x="Time")  
 
-# initialize results vector
-popEst <- numeric(length(dates))
-for (i in 1:nrow(ts.df)) { # loop through time
-  
-  sum <- 0
-  
-  for (j in 2:ncol(ts.df[i,2:ncol(ts.df)])) { # loop over pixels
-    
-    if (!is.na(ts.df[i,j])) {
-      colname <- names(ts.df)[j]
-      px <- as.numeric(substr(colname, 3, nchar(colname)))
-      val <- ts.df[i,j] - values(stableMean)[px]
-      sum <- sum + val
-    }
-    
-  }
-  popEst[i] <- sum / dVI_min
-}
+comb_ts$err <- comb_ts$popEst - comb_ts$popRep
 
-popEst_ts <- timeser(popEst, dates)
-
-# load reported population estimates as time series
-popRep_df <- read.csv('data/ReportedRefugeePopulation.csv')[,1:2]
-popRep_df[,1] <- as.Date(popRep_df[,1], "%Y-%m-%d") # convert date column to dates
-popRep_ts <- ts(rep(NA, length(popEst_ts)), start=start(popEst_ts), frequency=frequency(popEst_ts))
-
-for (i in 1:length(popRep_ts)) {
-  val <- popRep_df$pop[abs(decimal_date(popRep_df$date) - time(popRep_ts)[i]) < 0.01]
-  if (length(val) > 0) {
-    popRep_ts[i] <- val
-  }
-}
-# interpolate the Reported data
-popRep_ts <- na.approx(popRep_ts, maxgap=10)
-popRep_ts[is.na(popRep_ts)] <- 0
-popRep <- as.numeric(popRep_ts)
-
-# Optimize the weight and bias parameters to fit to reported data
-res <- optim(c(1, 1), fn=popError, popEst=popEst, popRep=popRep)
-a <- res$par[1]
-b <- res$par[2]
-popEst_ts <- timeser(a * popEst + b, dates)
+ggplot(comb_ts, aes(x=time, y = err)) +
+  geom_line(color = "black") +
+  geom_hline(yintercept = 0) +
+  labs(title="Error in population estimate w.r.t. reported population", y="Error (individuals)", x="Time")  
 
 # Plot result on map
 layer = bfmR$time.of.break
