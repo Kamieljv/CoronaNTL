@@ -5,11 +5,7 @@
 # Function that computes the population estimate by fitting it to the reported population
 # * bfmR: raster output of BFAST Monitor
 # * VI_m: masked vegetation index raster
-computePopulationEstimate <- function (bfmR, VI_m) {
-  
-  # get the largest negative change in VI
-  dVI_min <- min(getValues(bfmR$magnitude.of.change))
-  stableMean <- calc(VI_m, calcStableMean)
+computePopulationEstimate <- function (bfmR, VI_m, stableMean) {
   
   # initialize results vector
   popEst <- numeric(length(dates))
@@ -22,14 +18,14 @@ computePopulationEstimate <- function (bfmR, VI_m) {
       if (!is.na(ts.df[i,j])) {
         colname <- names(ts.df)[j]
         px <- as.numeric(substr(colname, 3, nchar(colname)))
-        val <- ts.df[i,j] - values(stableMean)[px]
+        val <- values(stableMean)[px] - ts.df[i,j]
         sum <- sum + val
       }
       
     }
-    popEst[i] <- -1*sum
+    popEst[i] <- sum
   }
-  
+
   popEst_ts <- timeser(popEst, dates)
   
   # load reported population estimates as time series
@@ -59,5 +55,5 @@ computePopulationEstimate <- function (bfmR, VI_m) {
   comb_ts[3] <- popRep_ts
   names(comb_ts) <- c('time', 'popEst', 'popRep')
   
-  return (comb_ts[150:nrow(comb_ts),])
+  return (list(comb_ts[150:nrow(comb_ts),], a, b))
 }
